@@ -22,6 +22,7 @@ public static class NativeMethods
     public const int VK_RMENU = 0xA5;
     public const int VK_LWIN = 0x5B;
     public const int VK_RWIN = 0x5C;
+    public const ushort VK_NONAME = 0xFC; // Used for Windows menu masking to prevent Alt menu activation
 
     public const uint LLKHF_EXTENDED = 0x01;
     public const uint LLKHF_INJECTED = 0x10;

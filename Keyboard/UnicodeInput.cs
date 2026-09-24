@@ -19,7 +19,41 @@ public static class UnicodeInput
 
         var inputList = new List<NativeMethods.INPUT>();
 
-        // Step 1: Ensure Alt is logically released before inserting the character,
+        // Step 1: Send dummy key (VK_NONAME) while Alt is down to clear the Windows menu activation flag.
+        // This informs Windows that Alt was part of a keystroke combination, preventing active applications
+        // from activating their menu bar when Alt is subsequently released.
+        inputList.Add(new NativeMethods.INPUT
+        {
+            type = NativeMethods.INPUT_KEYBOARD,
+            u = new NativeMethods.InputUnion
+            {
+                ki = new NativeMethods.KEYBDINPUT
+                {
+                    wVk = NativeMethods.VK_NONAME,
+                    wScan = 0,
+                    dwFlags = 0,
+                    time = 0,
+                    dwExtraInfo = NativeMethods.QRMT_EXTRA_INFO
+                }
+            }
+        });
+        inputList.Add(new NativeMethods.INPUT
+        {
+            type = NativeMethods.INPUT_KEYBOARD,
+            u = new NativeMethods.InputUnion
+            {
+                ki = new NativeMethods.KEYBDINPUT
+                {
+                    wVk = NativeMethods.VK_NONAME,
+                    wScan = 0,
+                    dwFlags = NativeMethods.KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = NativeMethods.QRMT_EXTRA_INFO
+                }
+            }
+        });
+
+        // Step 2: Ensure Alt is logically released before inserting the character,
         // so active applications treat the incoming character as text rather than a shortcut chord.
         inputList.Add(new NativeMethods.INPUT
         {
@@ -37,7 +71,7 @@ public static class UnicodeInput
             }
         });
 
-        // Step 2: Inject Unicode characters
+        // Step 3: Inject Unicode characters
         foreach (char c in text)
         {
             // Key down

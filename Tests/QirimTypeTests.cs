@@ -116,17 +116,70 @@ public sealed class QirimTypeTests
         bool keyUpHandled = hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, kbd);
         Assert.IsTrue(keyUpHandled, "KeyUp for intercepted G must be suppressed");
 
-        // KeyUp for Alt should be suppressed because a symbol was typed
+        // KeyUp for Alt must NEVER be suppressed to ensure Windows key state remains
+        // synchronized and never leaves Alt in a sticky/held-down state.
         var altKbd = new NativeMethods.KBDLLHOOKSTRUCT
         {
             vkCode = (uint)NativeMethods.VK_LMENU
         };
         bool altUpHandled = hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, altKbd);
-        Assert.IsTrue(altUpHandled, "KeyUp for Alt should be suppressed after typing a symbol to avoid menu activation");
+        Assert.IsFalse(altUpHandled, "KeyUp for Alt must never be suppressed to prevent sticky Alt");
+    }
 
-        // Second KeyUp for Alt (if any) should not be suppressed
-        bool secondAltUp = hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, altKbd);
-        Assert.IsFalse(secondAltUp, "Subsequent Alt release should pass through normally");
+    [TestMethod]
+    public void Test_HotkeyManager_Modifiers_AreNeverSuppressed()
+    {
+        var settingsManager = new SettingsManager();
+        settingsManager.SetEnabled(true);
+        var hotkeyManager = new HotkeyManager(settingsManager);
+
+        uint[] modifierKeys = new[]
+        {
+            (uint)NativeMethods.VK_MENU,
+            (uint)NativeMethods.VK_LMENU,
+            (uint)NativeMethods.VK_RMENU,
+            (uint)NativeMethods.VK_SHIFT,
+            (uint)NativeMethods.VK_LSHIFT,
+            (uint)NativeMethods.VK_RSHIFT,
+            (uint)NativeMethods.VK_CONTROL,
+            (uint)NativeMethods.VK_LCONTROL,
+            (uint)NativeMethods.VK_RCONTROL,
+            (uint)NativeMethods.VK_LWIN,
+            (uint)NativeMethods.VK_RWIN,
+        };
+
+        foreach (uint vk in modifierKeys)
+        {
+            var kbdDown = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = vk };
+            Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYDOWN, kbdDown), $"Modifier down (0x{vk:X}) must pass through");
+            Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYDOWN, kbdDown), $"Modifier sysdown (0x{vk:X}) must pass through");
+
+            var kbdUp = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = vk };
+            Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYUP, kbdUp), $"Modifier up (0x{vk:X}) must pass through");
+            Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, kbdUp), $"Modifier sysup (0x{vk:X}) must pass through");
+        }
+    }
+
+    [TestMethod]
+    public void Test_HotkeyManager_AltShift_LanguageSwitch_NeverIntercepted()
+    {
+        var settingsManager = new SettingsManager();
+        settingsManager.SetEnabled(true);
+        var hotkeyManager = new HotkeyManager(settingsManager);
+
+        // Simulate Alt press
+        var kbdAlt = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = (uint)NativeMethods.VK_LMENU };
+        Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYDOWN, kbdAlt));
+
+        // Simulate Shift press (language switch chord)
+        var kbdShift = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = (uint)NativeMethods.VK_LSHIFT, flags = NativeMethods.LLKHF_ALTDOWN };
+        Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYDOWN, kbdShift));
+
+        // Release Shift
+        Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYUP, kbdShift));
+
+        // Release Alt
+        Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYUP, kbdAlt));
     }
 
     [TestMethod]
@@ -306,9 +359,9 @@ public sealed class QirimTypeTests
         Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYDOWN, kbdO), "O press while Alt is held MUST be intercepted");
         Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYUP, kbdO), "O keyup must be suppressed");
 
-        // 6. User finally releases physical Alt
+        // 6. User finally releases physical Alt - must pass through to Windows to prevent stuck Alt
         var altUp = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = (uint)NativeMethods.VK_LMENU };
-        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, altUp), "Alt release after typing symbols must be suppressed");
+        Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, altUp), "Alt release must pass through to Windows to prevent stuck Alt");
 
         // 7. Now that Alt is released, pressing G should NOT be intercepted!
         var kbdGAfterAltReleased = new NativeMethods.KBDLLHOOKSTRUCT

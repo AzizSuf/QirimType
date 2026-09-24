@@ -76,10 +76,10 @@ public class IntegrationTests
                     Assert.IsTrue(upSuppressed, $"KeyUp for {key} must be suppressed");
                 }
 
-                // Simulate Alt release
+                // Simulate Alt release - must NOT be suppressed to ensure OS key state is clean
                 var altKbd = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = (uint)NativeMethods.VK_LMENU };
                 bool altUpSuppressed = hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, altKbd);
-                Assert.IsTrue(altUpSuppressed, "Alt release after symbol should be suppressed");
+                Assert.IsFalse(altUpSuppressed, "Alt release must NOT be suppressed to prevent sticky Alt and allow smooth layout switching");
 
                 // Let Windows message loop process injected inputs
                 await Task.Delay(200);

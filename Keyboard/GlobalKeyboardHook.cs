@@ -65,8 +65,8 @@ public class GlobalKeyboardHook : IDisposable
         {
             var kbd = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
 
-            // Skip processing for our own injected input to prevent recursion
-            if (kbd.dwExtraInfo == NativeMethods.QRMT_EXTRA_INFO)
+            // Skip processing for our own injected input or system-injected inputs to prevent recursion
+            if (kbd.dwExtraInfo == NativeMethods.QRMT_EXTRA_INFO || (kbd.flags & NativeMethods.LLKHF_INJECTED) != 0)
             {
                 return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
             }

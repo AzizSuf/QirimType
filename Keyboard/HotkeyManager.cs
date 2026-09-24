@@ -7,7 +7,6 @@ public class HotkeyManager
 {
     private readonly SettingsManager _settingsManager;
     private readonly HashSet<uint> _suppressedKeys = new();
-    private bool _altUsedForSymbol;
     private bool _isPhysicalAltDown;
 
     public HotkeyManager(SettingsManager settingsManager)
@@ -25,7 +24,6 @@ public class HotkeyManager
         if (!_settingsManager.Settings.IsEnabled)
         {
             _suppressedKeys.Clear();
-            _altUsedForSymbol = false;
             _isPhysicalAltDown = false;
             return false;
         }
@@ -38,27 +36,29 @@ public class HotkeyManager
                          vkCode == NativeMethods.VK_LMENU ||
                          vkCode == NativeMethods.VK_RMENU);
 
-        // 1. Track physical Alt key state and handle Alt release
-        if (isAltKey)
-        {
-            if (isKeyDown)
-            {
-                _isPhysicalAltDown = true;
-                return false; // Allow physical Alt down to pass through normally
-            }
-            else if (isKeyUp)
-            {
-                _isPhysicalAltDown = false;
+        bool isModifierKey = isAltKey ||
+                             vkCode == NativeMethods.VK_SHIFT ||
+                             vkCode == NativeMethods.VK_LSHIFT ||
+                             vkCode == NativeMethods.VK_RSHIFT ||
+                             vkCode == NativeMethods.VK_CONTROL ||
+                             vkCode == NativeMethods.VK_LCONTROL ||
+                             vkCode == NativeMethods.VK_RCONTROL ||
+                             vkCode == NativeMethods.VK_LWIN ||
+                             vkCode == NativeMethods.VK_RWIN;
 
-                // If user releases the Alt key after having typed a symbol with it,
-                // suppress the Alt keyup to prevent the active window from focusing its menu bar.
-                if (_altUsedForSymbol)
-                {
-                    _altUsedForSymbol = false;
-                    return true; // Suppress Alt release
-                }
-                return false;
+        // 1. Modifiers (Alt, Shift, Ctrl, Win) must NEVER be suppressed.
+        // Passing them through ensures the OS keyboard state remains perfectly synchronized,
+        // preventing stuck keys and allowing language switching (Alt+Shift, Win+Space) to work cleanly.
+        if (isModifierKey)
+        {
+            if (isAltKey)
+            {
+                if (isKeyDown)
+                    _isPhysicalAltDown = true;
+                else if (isKeyUp)
+                    _isPhysicalAltDown = false;
             }
+            return false;
         }
 
         // 2. Handle KeyUp for previously intercepted symbol keys
@@ -75,15 +75,6 @@ public class HotkeyManager
         // 3. Handle KeyDown
         if (isKeyDown)
         {
-            // If the LLKHF_ALTDOWN context flag is set, physical Alt is definitely down
-            if ((kbd.flags & NativeMethods.LLKHF_ALTDOWN) != 0)
-            {
-                _isPhysicalAltDown = true;
-            }
-
-            // Strict modifier check: Alt MUST be down, but Ctrl, Shift, and Win MUST NOT be down.
-            // Using _isPhysicalAltDown ensures that subsequent keypresses while Alt remains held
-            // are properly intercepted even after SendInput logically releases Alt for character insertion.
             bool isAltDown = _isPhysicalAltDown ||
                              (kbd.flags & NativeMethods.LLKHF_ALTDOWN) != 0 ||
                              (NativeMethods.GetAsyncKeyState(NativeMethods.VK_MENU) & 0x8000) != 0;
@@ -111,7 +102,6 @@ public class HotkeyManager
             if (match != null && !string.IsNullOrEmpty(match.Symbol))
             {
                 _suppressedKeys.Add(vkCode);
-                _altUsedForSymbol = true;
 
                 // Inject the Unicode character into foreground window
                 UnicodeInput.SendUnicodeString(match.Symbol);
