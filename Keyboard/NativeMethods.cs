@@ -23,6 +23,7 @@ public static class NativeMethods
     public const int VK_LWIN = 0x5B;
     public const int VK_RWIN = 0x5C;
     public const ushort VK_NONAME = 0xFC; // Used for Windows menu masking to prevent Alt menu activation
+    public const ushort LANG_ENGLISH = 0x09; // Primary language ID for all English layouts (US, UK, etc.)
 
     public const uint LLKHF_EXTENDED = 0x01;
     public const uint LLKHF_INJECTED = 0x10;
@@ -118,4 +119,32 @@ public static class NativeMethods
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint nInputs, [In] INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetKeyboardLayout(uint idThread);
+
+    /// <summary>
+    /// Checks whether the active foreground window currently has an English keyboard layout.
+    /// Returns true for US English (0x0409), UK English (0x0809), etc. (Primary LANGID == 0x09).
+    /// Returns false for Russian (0x0419), Ukrainian, Turkish, and all other non-English layouts.
+    /// </summary>
+    public static bool IsForegroundLayoutEnglish()
+    {
+        IntPtr hWnd = GetForegroundWindow();
+        uint threadId = 0;
+        if (hWnd != IntPtr.Zero)
+        {
+            threadId = GetWindowThreadProcessId(hWnd, out _);
+        }
+        IntPtr hkl = GetKeyboardLayout(threadId);
+        ushort langId = (ushort)((ulong)hkl & 0xFFFF);
+        ushort primaryLangId = (ushort)(langId & 0x3FF);
+        return primaryLangId == LANG_ENGLISH;
+    }
 }

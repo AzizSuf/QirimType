@@ -101,7 +101,7 @@ public sealed class QirimTypeTests
         var settingsManager = new SettingsManager();
         settingsManager.SetEnabled(true);
 
-        var hotkeyManager = new HotkeyManager(settingsManager);
+        var hotkeyManager = new HotkeyManager(settingsManager, () => true);
 
         var kbd = new NativeMethods.KBDLLHOOKSTRUCT
         {
@@ -232,6 +232,7 @@ public sealed class QirimTypeTests
 
         Assert.AreEqual(appSettings.IsEnabled, clone.IsEnabled);
         Assert.AreEqual(appSettings.StartWithWindows, clone.StartWithWindows);
+        Assert.AreEqual(appSettings.OnlyEnglishLayout, clone.OnlyEnglishLayout);
         Assert.AreEqual(appSettings.Mappings.Count, clone.Mappings.Count);
 
         // Mutating clone should not mutate original
@@ -244,7 +245,7 @@ public sealed class QirimTypeTests
     {
         var settingsManager = new SettingsManager();
         settingsManager.SetEnabled(true);
-        var hotkeyManager = new HotkeyManager(settingsManager);
+        var hotkeyManager = new HotkeyManager(settingsManager, () => true);
 
         var expectedKeys = new[] { Keys.G, Keys.I, Keys.N, Keys.O, Keys.U, Keys.C, Keys.S };
 
@@ -275,7 +276,7 @@ public sealed class QirimTypeTests
         gMapping.Key = Keys.K; // Remap 'ğ' to Alt+K
         settingsManager.SaveSettings(settings);
 
-        var hotkeyManager = new HotkeyManager(settingsManager);
+        var hotkeyManager = new HotkeyManager(settingsManager, () => true);
 
         // Old key Alt+G should no longer be intercepted
         var kbdG = new NativeMethods.KBDLLHOOKSTRUCT
@@ -316,7 +317,7 @@ public sealed class QirimTypeTests
     {
         var settingsManager = new SettingsManager();
         settingsManager.SetEnabled(true);
-        var hotkeyManager = new HotkeyManager(settingsManager);
+        var hotkeyManager = new HotkeyManager(settingsManager, () => true);
 
         // 1. User presses Alt down
         var altDown = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = (uint)NativeMethods.VK_LMENU };
@@ -370,5 +371,67 @@ public sealed class QirimTypeTests
             flags = 0
         };
         Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYDOWN, kbdGAfterAltReleased), "G press after Alt is released must pass through as normal G");
+    }
+
+    [TestMethod]
+    public void Test_OnlyEnglishLayout_ActiveLayoutEnglish_Intercepts()
+    {
+        var settingsManager = new SettingsManager();
+        settingsManager.SetEnabled(true);
+        settingsManager.Settings.OnlyEnglishLayout = true;
+
+        // Mock English layout: returns true
+        var hotkeyManager = new HotkeyManager(settingsManager, () => true);
+
+        var kbd = new NativeMethods.KBDLLHOOKSTRUCT
+        {
+            vkCode = (uint)Keys.G,
+            flags = NativeMethods.LLKHF_ALTDOWN
+        };
+
+        bool handled = hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYDOWN, kbd);
+        Assert.IsTrue(handled, "Alt+G must be intercepted when layout is English");
+    }
+
+    [TestMethod]
+    public void Test_OnlyEnglishLayout_ActiveLayoutRussian_PassesThroughWithoutReplacing()
+    {
+        var settingsManager = new SettingsManager();
+        settingsManager.SetEnabled(true);
+        settingsManager.Settings.OnlyEnglishLayout = true;
+
+        // Mock Russian (or any non-English) layout: returns false
+        var hotkeyManager = new HotkeyManager(settingsManager, () => false);
+
+        var kbd = new NativeMethods.KBDLLHOOKSTRUCT
+        {
+            vkCode = (uint)Keys.G,
+            flags = NativeMethods.LLKHF_ALTDOWN
+        };
+
+        // When layout is Russian, Alt+G must NOT be intercepted!
+        bool handled = hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYDOWN, kbd);
+        Assert.IsFalse(handled, "In Russian layout, Alt+G must NOT be intercepted and must pass through");
+    }
+
+    [TestMethod]
+    public void Test_LanguageId_PrimaryId_Computation()
+    {
+        // US English: 0x0409
+        ushort usEnglish = 0x0409;
+        Assert.AreEqual(0x09, usEnglish & 0x3FF, "US English primary language ID must be 0x09 (LANG_ENGLISH)");
+
+        // UK English: 0x0809
+        ushort ukEnglish = 0x0809;
+        Assert.AreEqual(0x09, ukEnglish & 0x3FF, "UK English primary language ID must be 0x09 (LANG_ENGLISH)");
+
+        // Russian: 0x0419
+        ushort russian = 0x0419;
+        Assert.AreNotEqual(0x09, russian & 0x3FF, "Russian primary language ID must NOT be 0x09");
+        Assert.AreEqual(0x19, russian & 0x3FF, "Russian primary language ID must be 0x19");
+
+        // Ukrainian: 0x0422
+        ushort ukrainian = 0x0422;
+        Assert.AreNotEqual(0x09, ukrainian & 0x3FF, "Ukrainian primary language ID must NOT be 0x09");
     }
 }

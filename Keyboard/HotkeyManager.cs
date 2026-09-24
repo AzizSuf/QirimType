@@ -7,11 +7,13 @@ public class HotkeyManager
 {
     private readonly SettingsManager _settingsManager;
     private readonly HashSet<uint> _suppressedKeys = new();
+    private readonly Func<bool> _isEnglishLayout;
     private bool _isPhysicalAltDown;
 
-    public HotkeyManager(SettingsManager settingsManager)
+    public HotkeyManager(SettingsManager settingsManager, Func<bool>? isEnglishLayout = null)
     {
         _settingsManager = settingsManager;
+        _isEnglishLayout = isEnglishLayout ?? NativeMethods.IsForegroundLayoutEnglish;
     }
 
     /// <summary>
@@ -93,6 +95,10 @@ public class HotkeyManager
             bool isWinDown = (NativeMethods.GetAsyncKeyState(NativeMethods.VK_LWIN) & 0x8000) != 0 ||
                              (NativeMethods.GetAsyncKeyState(NativeMethods.VK_RWIN) & 0x8000) != 0;
             if (isWinDown)
+                return false;
+
+            // Do not replace symbols in keyboard layouts other than English (e.g. Russian, etc.)
+            if (_settingsManager.Settings.OnlyEnglishLayout && !_isEnglishLayout())
                 return false;
 
             // Check if vkCode matches any of our mappings

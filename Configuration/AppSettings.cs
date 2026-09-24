@@ -4,6 +4,7 @@ public class AppSettings
 {
     public bool IsEnabled { get; set; } = true;
     public bool StartWithWindows { get; set; } = false;
+    public bool OnlyEnglishLayout { get; set; } = true;
     public List<HotkeyMapping> Mappings { get; set; } = GetDefaultMappings();
 
     public static List<HotkeyMapping> GetDefaultMappings()
@@ -26,6 +27,7 @@ public class AppSettings
         {
             IsEnabled = this.IsEnabled,
             StartWithWindows = this.StartWithWindows,
+            OnlyEnglishLayout = this.OnlyEnglishLayout,
             Mappings = this.Mappings.Select(m => new HotkeyMapping(m.Symbol, m.DisplayName, m.Key, m.RequireAlt)).ToList()
         };
     }

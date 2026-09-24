@@ -13,6 +13,7 @@ public class SettingsForm : Form
 
     private CheckBox _chkEnabled = null!;
     private CheckBox _chkAutostart = null!;
+    private CheckBox _chkOnlyEnglish = null!;
 
     public SettingsForm(SettingsManager settingsManager)
     {
@@ -29,7 +30,7 @@ public class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(540, 580);
+        ClientSize = new Size(540, 610);
         BackColor = Color.FromArgb(248, 249, 250);
         Font = new Font("Segoe UI", 9.5f);
         Icon = IconHelper.CreateAppIcon(true, 32);
@@ -94,7 +95,7 @@ public class SettingsForm : Form
         {
             Text = "Параметры работы",
             Dock = DockStyle.Top,
-            Height = 85,
+            Height = 112,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             ForeColor = Color.FromArgb(73, 80, 87),
             Padding = new Padding(15, 10, 15, 10)
@@ -120,8 +121,19 @@ public class SettingsForm : Form
             Location = new Point(15, 50)
         };
 
+        _chkOnlyEnglish = new CheckBox
+        {
+            Text = "Работать только в английской раскладке (ENG)",
+            Font = new Font("Segoe UI", 9.5f),
+            ForeColor = Color.FromArgb(33, 37, 41),
+            Checked = _workingSettings.OnlyEnglishLayout,
+            AutoSize = true,
+            Location = new Point(15, 76)
+        };
+
         groupOptions.Controls.Add(_chkEnabled);
         groupOptions.Controls.Add(_chkAutostart);
+        groupOptions.Controls.Add(_chkOnlyEnglish);
 
         // 4. Action Buttons
         var bottomPanel = new Panel
@@ -286,6 +298,7 @@ public class SettingsForm : Form
 
         if (result == DialogResult.Yes)
         {
+            _chkOnlyEnglish.Checked = true;
             var defaults = AppSettings.GetDefaultMappings();
             foreach (var def in defaults)
             {
@@ -308,6 +321,7 @@ public class SettingsForm : Form
     {
         _workingSettings.IsEnabled = _chkEnabled.Checked;
         _workingSettings.StartWithWindows = _chkAutostart.Checked;
+        _workingSettings.OnlyEnglishLayout = _chkOnlyEnglish.Checked;
 
         _settingsManager.SaveSettings(_workingSettings);
         Close();

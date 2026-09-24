@@ -12,6 +12,7 @@ public class SettingsManager
         PropertyNameCaseInsensitive = true
     };
 
+    private static readonly object FileLock = new();
     private readonly string _settingsFilePath;
     private AppSettings _currentSettings;
 
@@ -19,14 +20,24 @@ public class SettingsManager
 
     public AppSettings Settings => _currentSettings;
 
-    public SettingsManager()
+    public SettingsManager(string? customSettingsPath = null)
     {
-        string appDataFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "QirimType");
+        if (!string.IsNullOrEmpty(customSettingsPath))
+        {
+            _settingsFilePath = customSettingsPath;
+            string? dir = Path.GetDirectoryName(_settingsFilePath);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+        }
+        else
+        {
+            string appDataFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "QirimType");
 
-        Directory.CreateDirectory(appDataFolder);
-        _settingsFilePath = Path.Combine(appDataFolder, "settings.json");
+            Directory.CreateDirectory(appDataFolder);
+            _settingsFilePath = Path.Combine(appDataFolder, "settings.json");
+        }
 
         _currentSettings = LoadSettings();
 
@@ -36,54 +47,60 @@ public class SettingsManager
 
     public AppSettings LoadSettings()
     {
-        try
+        lock (FileLock)
         {
-            if (File.Exists(_settingsFilePath))
+            try
             {
-                string json = File.ReadAllText(_settingsFilePath);
-                var loaded = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
-                if (loaded != null && loaded.Mappings != null && loaded.Mappings.Count > 0)
+                if (File.Exists(_settingsFilePath))
                 {
-                    // Ensure all 7 Crimean Tatar symbols exist
-                    var defaultMappings = AppSettings.GetDefaultMappings();
-                    foreach (var def in defaultMappings)
+                    string json = File.ReadAllText(_settingsFilePath);
+                    var loaded = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
+                    if (loaded != null && loaded.Mappings != null && loaded.Mappings.Count > 0)
                     {
-                        if (!loaded.Mappings.Any(m => m.Symbol == def.Symbol))
+                        // Ensure all 7 Crimean Tatar symbols exist
+                        var defaultMappings = AppSettings.GetDefaultMappings();
+                        foreach (var def in defaultMappings)
                         {
-                            loaded.Mappings.Add(def);
+                            if (!loaded.Mappings.Any(m => m.Symbol == def.Symbol))
+                            {
+                                loaded.Mappings.Add(def);
+                            }
                         }
+                        return loaded;
                     }
-                    return loaded;
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to load settings from {_settingsFilePath}: {ex.Message}");
-        }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to load settings from {_settingsFilePath}: {ex.Message}");
+            }
 
-        var defaultSettings = new AppSettings();
-        SaveSettings(defaultSettings);
-        return defaultSettings;
+            var defaultSettings = new AppSettings();
+            SaveSettings(defaultSettings);
+            return defaultSettings;
+        }
     }
 
     public void SaveSettings(AppSettings newSettings)
     {
-        try
+        lock (FileLock)
         {
-            _currentSettings = newSettings;
+            try
+            {
+                _currentSettings = newSettings;
 
-            // Update autostart registry
-            AutostartManager.SetAutostart(newSettings.StartWithWindows);
+                // Update autostart registry
+                AutostartManager.SetAutostart(newSettings.StartWithWindows);
 
-            string json = JsonSerializer.Serialize(_currentSettings, JsonOptions);
-            File.WriteAllText(_settingsFilePath, json);
+                string json = JsonSerializer.Serialize(_currentSettings, JsonOptions);
+                File.WriteAllText(_settingsFilePath, json);
 
-            SettingsChanged?.Invoke(_currentSettings);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to save settings: {ex.Message}");
+                SettingsChanged?.Invoke(_currentSettings);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to save settings: {ex.Message}");
+            }
         }
     }
 
@@ -105,6 +122,7 @@ public class SettingsManager
         {
             IsEnabled = _currentSettings.IsEnabled,
             StartWithWindows = _currentSettings.StartWithWindows,
+            OnlyEnglishLayout = true,
             Mappings = AppSettings.GetDefaultMappings()
         };
         SaveSettings(defaults);
