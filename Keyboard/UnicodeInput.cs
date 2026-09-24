@@ -10,37 +10,32 @@ public static class UnicodeInput
 
     /// <summary>
     /// Injects a Unicode string (e.g. "ğ", "ı", "ö") into the currently active window
-    /// while temporarily ensuring Alt is released so the character is treated as text input.
+    /// while ensuring Alt is logically released so the character is treated as pure text input.
     /// </summary>
     public static bool SendUnicodeString(string text)
     {
         if (string.IsNullOrEmpty(text))
             return false;
 
-        // Check if Alt is physically or logically pressed
-        bool altDown = (NativeMethods.GetAsyncKeyState(NativeMethods.VK_MENU) & 0x8000) != 0;
-
         var inputList = new List<NativeMethods.INPUT>();
 
-        // Step 1: If Alt is held down, release it logically before inserting the character
-        if (altDown)
+        // Step 1: Ensure Alt is logically released before inserting the character,
+        // so active applications treat the incoming character as text rather than a shortcut chord.
+        inputList.Add(new NativeMethods.INPUT
         {
-            inputList.Add(new NativeMethods.INPUT
+            type = NativeMethods.INPUT_KEYBOARD,
+            u = new NativeMethods.InputUnion
             {
-                type = NativeMethods.INPUT_KEYBOARD,
-                u = new NativeMethods.InputUnion
+                ki = new NativeMethods.KEYBDINPUT
                 {
-                    ki = new NativeMethods.KEYBDINPUT
-                    {
-                        wVk = NativeMethods.VK_MENU,
-                        wScan = 0,
-                        dwFlags = NativeMethods.KEYEVENTF_KEYUP,
-                        time = 0,
-                        dwExtraInfo = NativeMethods.QRMT_EXTRA_INFO
-                    }
+                    wVk = NativeMethods.VK_MENU,
+                    wScan = 0,
+                    dwFlags = NativeMethods.KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = NativeMethods.QRMT_EXTRA_INFO
                 }
-            });
-        }
+            }
+        });
 
         // Step 2: Inject Unicode characters
         foreach (char c in text)

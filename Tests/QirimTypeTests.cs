@@ -257,4 +257,65 @@ public sealed class QirimTypeTests
         var fi = new FileInfo(icoPath);
         Assert.IsTrue(fi.Length > 1000, "app.ico should have non-zero size");
     }
+
+    [TestMethod]
+    public void Test_HoldingAltDown_MultiplePresses_AreAllIntercepted()
+    {
+        var settingsManager = new SettingsManager();
+        settingsManager.SetEnabled(true);
+        var hotkeyManager = new HotkeyManager(settingsManager);
+
+        // 1. User presses Alt down
+        var altDown = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = (uint)NativeMethods.VK_LMENU };
+        bool altDownResult = hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYDOWN, altDown);
+        Assert.IsFalse(altDownResult, "Alt down itself should pass through");
+
+        // 2. User presses G first time (with LLKHF_ALTDOWN)
+        var kbdG1 = new NativeMethods.KBDLLHOOKSTRUCT
+        {
+            vkCode = (uint)Keys.G,
+            flags = NativeMethods.LLKHF_ALTDOWN
+        };
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYDOWN, kbdG1), "First G press must be intercepted");
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, kbdG1), "First G keyup must be suppressed");
+
+        // 3. User presses G second time (Alt is still physically down, but flags might have 0 because SendInput logically released Alt)
+        var kbdG2 = new NativeMethods.KBDLLHOOKSTRUCT
+        {
+            vkCode = (uint)Keys.G,
+            flags = 0 // Context flag might be 0 after SendInput released Alt
+        };
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYDOWN, kbdG2), "Second G press while Alt is held MUST be intercepted");
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYUP, kbdG2), "Second G keyup must be suppressed");
+
+        // 4. User presses G third time
+        var kbdG3 = new NativeMethods.KBDLLHOOKSTRUCT
+        {
+            vkCode = (uint)Keys.G,
+            flags = 0
+        };
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYDOWN, kbdG3), "Third G press while Alt is held MUST be intercepted");
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYUP, kbdG3), "Third G keyup must be suppressed");
+
+        // 5. User presses O (still holding Alt)
+        var kbdO = new NativeMethods.KBDLLHOOKSTRUCT
+        {
+            vkCode = (uint)Keys.O,
+            flags = 0
+        };
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYDOWN, kbdO), "O press while Alt is held MUST be intercepted");
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYUP, kbdO), "O keyup must be suppressed");
+
+        // 6. User finally releases physical Alt
+        var altUp = new NativeMethods.KBDLLHOOKSTRUCT { vkCode = (uint)NativeMethods.VK_LMENU };
+        Assert.IsTrue(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_SYSKEYUP, altUp), "Alt release after typing symbols must be suppressed");
+
+        // 7. Now that Alt is released, pressing G should NOT be intercepted!
+        var kbdGAfterAltReleased = new NativeMethods.KBDLLHOOKSTRUCT
+        {
+            vkCode = (uint)Keys.G,
+            flags = 0
+        };
+        Assert.IsFalse(hotkeyManager.ProcessKeyboardEvent(NativeMethods.WM_KEYDOWN, kbdGAfterAltReleased), "G press after Alt is released must pass through as normal G");
+    }
 }
