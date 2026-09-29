@@ -30,7 +30,7 @@ public class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(540, 640);
+        ClientSize = new Size(540, 620);
         BackColor = Color.FromArgb(248, 249, 250);
         Font = new Font("Segoe UI", 9.5f);
         Icon = IconHelper.CreateAppIcon(true, 32);
@@ -39,13 +39,17 @@ public class SettingsForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 4,
             Padding = new Padding(20, 16, 20, 16)
         };
         mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));           // Row 0: Title
+        mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));       // Row 1: GroupHotkeys expands vertically
+        mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));           // Row 2: GroupOptions
+        mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 45f));       // Row 3: Buttons
 
         // 1. Title / Header
-        var titlePanel = new Panel { Height = 45, Dock = DockStyle.Top };
+        var titlePanel = new Panel { Height = 45, Dock = DockStyle.Top, Margin = new Padding(0, 0, 0, 8) };
         var lblTitle = new Label
         {
             Text = "Горячие клавиши крымскотатарских букв",
@@ -72,14 +76,15 @@ public class SettingsForm : Form
             Dock = DockStyle.Fill,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             ForeColor = Color.FromArgb(73, 80, 87),
-            Padding = new Padding(12, 10, 12, 10)
+            Padding = new Padding(12, 12, 12, 10),
+            Margin = new Padding(0, 0, 0, 10)
         };
 
         var mappingTable = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 4,
-            RowCount = 9,
+            RowCount = 8,
             AutoScroll = true
         };
         mappingTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));  // Symbol
@@ -94,11 +99,12 @@ public class SettingsForm : Form
         var groupOptions = new GroupBox
         {
             Text = "Параметры работы",
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             Height = 112,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             ForeColor = Color.FromArgb(73, 80, 87),
-            Padding = new Padding(15, 10, 15, 10)
+            Padding = new Padding(15, 10, 15, 10),
+            Margin = new Padding(0, 0, 0, 10)
         };
 
         _chkEnabled = new CheckBox
@@ -138,16 +144,17 @@ public class SettingsForm : Form
         // 4. Action Buttons
         var bottomPanel = new Panel
         {
-            Dock = DockStyle.Bottom,
+            Dock = DockStyle.Fill,
             Height = 45,
-            Padding = new Padding(0, 8, 0, 0)
+            Padding = new Padding(0, 4, 0, 0),
+            Margin = new Padding(0)
         };
 
         var btnRestore = new Button
         {
             Text = "По умолчанию",
             Size = new Size(130, 32),
-            Location = new Point(0, 6),
+            Location = new Point(0, 4),
             BackColor = Color.FromArgb(240, 242, 245),
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9f),
@@ -156,13 +163,22 @@ public class SettingsForm : Form
         btnRestore.FlatAppearance.BorderColor = Color.FromArgb(206, 212, 218);
         btnRestore.Click += (s, e) => RestoreDefaults();
 
+        var rightButtonsPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Padding = new Padding(0, 4, 0, 0),
+            Margin = new Padding(0)
+        };
+
         var btnSave = new Button
         {
             Text = "Сохранить",
             DialogResult = DialogResult.OK,
             Size = new Size(100, 32),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(bottomPanel.Width - 215, 6),
+            Margin = new Padding(0, 0, 10, 0),
             BackColor = Color.FromArgb(0, 122, 217),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
@@ -177,8 +193,7 @@ public class SettingsForm : Form
             Text = "Отмена",
             DialogResult = DialogResult.Cancel,
             Size = new Size(100, 32),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(bottomPanel.Width - 105, 6),
+            Margin = new Padding(0),
             BackColor = Color.FromArgb(230, 233, 236),
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9.5f),
@@ -186,14 +201,16 @@ public class SettingsForm : Form
         };
         btnCancel.FlatAppearance.BorderSize = 0;
 
-        bottomPanel.Controls.Add(btnRestore);
-        bottomPanel.Controls.Add(btnSave);
-        bottomPanel.Controls.Add(btnCancel);
+        rightButtonsPanel.Controls.Add(btnSave);
+        rightButtonsPanel.Controls.Add(btnCancel);
 
-        mainPanel.Controls.Add(titlePanel);
-        mainPanel.Controls.Add(groupHotkeys);
-        mainPanel.Controls.Add(groupOptions);
-        mainPanel.Controls.Add(bottomPanel);
+        bottomPanel.Controls.Add(btnRestore);
+        bottomPanel.Controls.Add(rightButtonsPanel);
+
+        mainPanel.Controls.Add(titlePanel, 0, 0);
+        mainPanel.Controls.Add(groupHotkeys, 0, 1);
+        mainPanel.Controls.Add(groupOptions, 0, 2);
+        mainPanel.Controls.Add(bottomPanel, 0, 3);
 
         Controls.Add(mainPanel);
 
@@ -204,11 +221,17 @@ public class SettingsForm : Form
     private void BuildMappingRows(TableLayoutPanel panel)
     {
         panel.Controls.Clear();
+        panel.RowStyles.Clear();
         _rowBindings.Clear();
+
+        int count = _workingSettings.Mappings.Count;
+        panel.RowCount = count;
+        float percentPerRow = 100f / Math.Max(1, count);
 
         int row = 0;
         foreach (var mapping in _workingSettings.Mappings)
         {
+            panel.RowStyles.Add(new RowStyle(SizeType.Percent, percentPerRow));
             var lblSymbol = new Label
             {
                 Text = mapping.Symbol,
@@ -235,8 +258,9 @@ public class SettingsForm : Form
                 TextAlign = ContentAlignment.MiddleCenter,
                 BorderStyle = BorderStyle.FixedSingle,
                 BackColor = Color.FromArgb(250, 250, 252),
-                Margin = new Padding(3, 4, 3, 4),
-                Dock = DockStyle.Fill
+                Height = 28,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                Margin = new Padding(3, 0, 3, 0)
             };
 
             var btnChange = new Button
@@ -247,8 +271,8 @@ public class SettingsForm : Form
                 BackColor = Color.FromArgb(240, 242, 245),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(3, 3, 3, 3)
+                Anchor = AnchorStyles.None,
+                Margin = new Padding(3, 0, 3, 0)
             };
             btnChange.FlatAppearance.BorderColor = Color.FromArgb(206, 212, 218);
 
