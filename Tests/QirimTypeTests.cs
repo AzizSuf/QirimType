@@ -13,7 +13,7 @@ public sealed class QirimTypeTests
     public void Test_DefaultMappings_SymbolsAndKeys()
     {
         var defaults = AppSettings.GetDefaultMappings();
-        Assert.AreEqual(7, defaults.Count, "Must have exactly 7 default mappings");
+        Assert.AreEqual(8, defaults.Count, "Must have exactly 8 default mappings");
 
         var map = defaults.ToDictionary(d => d.Key, d => d.Symbol);
 
@@ -44,6 +44,10 @@ public sealed class QirimTypeTests
         Assert.IsTrue(map.ContainsKey(Keys.S), "Must contain Alt+S");
         Assert.AreEqual("ş", map[Keys.S]);
         Assert.AreEqual((int)'\u015F', (int)map[Keys.S][0], "ş Unicode code point must be U+015F");
+
+        Assert.IsTrue(map.ContainsKey(Keys.A), "Must contain Alt+A");
+        Assert.AreEqual("â", map[Keys.A]);
+        Assert.AreEqual((int)'\u00E2', (int)map[Keys.A][0], "â Unicode code point must be U+00E2");
     }
 
     [TestMethod]
@@ -241,13 +245,13 @@ public sealed class QirimTypeTests
     }
 
     [TestMethod]
-    public void Test_AllSevenHotkeys_AreIntercepted()
+    public void Test_AllDefaultHotkeys_AreIntercepted()
     {
         var settingsManager = new SettingsManager();
         settingsManager.SetEnabled(true);
         var hotkeyManager = new HotkeyManager(settingsManager, () => true);
 
-        var expectedKeys = new[] { Keys.G, Keys.I, Keys.N, Keys.O, Keys.U, Keys.C, Keys.S };
+        var expectedKeys = new[] { Keys.G, Keys.I, Keys.N, Keys.O, Keys.U, Keys.C, Keys.S, Keys.A };
 
         foreach (var key in expectedKeys)
         {

@@ -30,7 +30,7 @@ public class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(540, 610);
+        ClientSize = new Size(540, 640);
         BackColor = Color.FromArgb(248, 249, 250);
         Font = new Font("Segoe UI", 9.5f);
         Icon = IconHelper.CreateAppIcon(true, 32);
@@ -79,7 +79,7 @@ public class SettingsForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 4,
-            RowCount = 8,
+            RowCount = 9,
             AutoScroll = true
         };
         mappingTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));  // Symbol
@@ -291,7 +291,7 @@ public class SettingsForm : Form
         var result = MessageBox.Show(
             this,
             "Восстановить комбинации по умолчанию?\n\n" +
-            "Alt+G → ğ\nAlt+I → ı\nAlt+N → ñ\nAlt+O → ö\nAlt+U → ü\nAlt+C → ç\nAlt+S → ş",
+            "Alt+G → ğ\nAlt+I → ı\nAlt+N → ñ\nAlt+O → ö\nAlt+U → ü\nAlt+C → ç\nAlt+S → ş\nAlt+A → â",
             "Сброс настроек",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Question);

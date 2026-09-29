@@ -19,6 +19,7 @@
 | **Alt + U** | **ü** | Latin Small Letter U with Diaeresis | `U+00FC` |
 | **Alt + C** | **ç** | Latin Small Letter C with Cedilla | `U+00E7` |
 | **Alt + S** | **ş** | Latin Small Letter S with Cedilla | `U+015F` |
+| **Alt + A** | **â** | Latin Small Letter A with Circumflex | `U+00E2` |
 
 > [!NOTE]
 > * Поддерживаются **только строчные буквы**.
@@ -149,7 +150,7 @@ dotnet publish -c Release -r win-x64 --self-contained true
    * Нажмите новую клавишу на клавиатуре (например, букву `K`).
    * Нажмите кнопку **«Сохранить»**.
 3. **Сброс настроек**:
-   * В окне **Настройки** нажмите **«По умолчанию»** (Restore defaults), чтобы вернуть стандартные комбинации `Alt + G`, `Alt + I`, `Alt + N`, `Alt + O`, `Alt + U`, `Alt + C`, `Alt + S`.
+   * В окне **Настройки** нажмите **«По умолчанию»** (Restore defaults), чтобы вернуть стандартные комбинации `Alt + G`, `Alt + I`, `Alt + N`, `Alt + O`, `Alt + U`, `Alt + C`, `Alt + S`, `Alt + A`.
 
 Файл настроек сохраняется в каталоге пользователя:
 `%APPDATA%\QirimType\settings.json`

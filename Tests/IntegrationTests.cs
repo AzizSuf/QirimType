@@ -58,7 +58,8 @@ public class IntegrationTests
                         (Keys.O, "ö"),
                         (Keys.U, "ü"),
                         (Keys.C, "ç"),
-                        (Keys.S, "ş")
+                        (Keys.S, "ş"),
+                        (Keys.A, "â")
                     };
 
                     foreach (var (key, expectedSymbol) in keys)

@@ -17,7 +17,8 @@ public class AppSettings
             new("ö", "ö (Latin Small Letter O with Diaeresis)", Keys.O, true),
             new("ü", "ü (Latin Small Letter U with Diaeresis)", Keys.U, true),
             new("ç", "ç (Latin Small Letter C with Cedilla)", Keys.C, true),
-            new("ş", "ş (Latin Small Letter S with Cedilla)", Keys.S, true)
+            new("ş", "ş (Latin Small Letter S with Cedilla)", Keys.S, true),
+            new("â", "â (Latin Small Letter A with Circumflex)", Keys.A, true)
         };
     }
 

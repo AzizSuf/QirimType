@@ -18,7 +18,7 @@ public class AboutForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(460, 480);
+        ClientSize = new Size(460, 510);
         BackColor = Color.FromArgb(248, 249, 250);
         Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
         Icon = IconHelper.CreateAppIcon(true, 32);
@@ -98,7 +98,7 @@ public class AboutForm : Form
             ForeColor = Color.FromArgb(73, 80, 87),
             Dock = DockStyle.Fill,
             Padding = new Padding(12, 10, 12, 10),
-            Height = 190
+            Height = 215
         };
 
         var listView = new ListView
@@ -125,7 +125,8 @@ public class AboutForm : Form
             ("ö", "Alt + O", "ö (o with diaeresis)"),
             ("ü", "Alt + U", "ü (u with diaeresis)"),
             ("ç", "Alt + C", "ç (c with cedilla)"),
-            ("ş", "Alt + S", "ş (s with cedilla)")
+            ("ş", "Alt + S", "ş (s with cedilla)"),
+            ("â", "Alt + A", "â (a with circumflex)")
         };
 
         foreach (var (sym, hk, name) in items)
