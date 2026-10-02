@@ -200,6 +200,7 @@ public class SettingsForm : Form
             Cursor = Cursors.Hand
         };
         btnCancel.FlatAppearance.BorderSize = 0;
+        btnCancel.Click += (s, e) => Close();
 
         rightButtonsPanel.Controls.Add(btnSave);
         rightButtonsPanel.Controls.Add(btnCancel);

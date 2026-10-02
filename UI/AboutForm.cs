@@ -171,6 +171,7 @@ public class AboutForm : Form
             Cursor = Cursors.Hand
         };
         btnOk.FlatAppearance.BorderSize = 0;
+        btnOk.Click += (s, e) => Close();
         bottomPanel.Controls.Add(btnOk);
 
         tablePanel.Controls.Add(headerPanel);
