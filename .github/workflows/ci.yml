@@ -1,0 +1,30 @@
+name: CI
+
+'on':
+  pull_request:
+    branches:
+      - master
+      - main
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore QirimType.sln
+
+      - name: Build Solution
+        run: dotnet build QirimType.sln --configuration Release --no-restore
+
+      - name: Run Tests
+        run: dotnet test QirimType.sln --configuration Release --no-build --verbosity normal

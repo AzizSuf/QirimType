@@ -1,0 +1,195 @@
+name: Release
+
+'on':
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Версия (например 1.0.1). Если не указана, берётся из тега или формируется preview'
+        required: false
+        default: ''
+      prerelease:
+        description: 'Пометить как Pre-release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Determine Version and Metadata
+        shell: pwsh
+        run: |
+          $isTag = "${{ github.ref_type }}" -eq "tag"
+          $manualVersion = "${{ inputs.version }}"
+          $manualPrerelease = "${{ inputs.prerelease }}"
+          $runNumber = "${{ github.run_number }}"
+          $sha = "${{ github.sha }}"
+          $shaShort = $sha.Substring(0, 7)
+
+          # Read base version from QirimType.csproj
+          [xml]$csproj = Get-Content "QirimType.csproj"
+          $baseVersion = $csproj.Project.PropertyGroup.Version
+          if (-not $baseVersion) { $baseVersion = "1.0.0" }
+
+          if ($manualVersion -ne "") {
+            $version = $manualVersion.TrimStart('v')
+            $isPrerelease = if ($manualPrerelease -eq "true") { "true" } else { "false" }
+            $tagName = "v$version"
+            $releaseName = "QırımType v$version"
+          } elseif ($isTag) {
+            $tag = "${{ github.ref_name }}"
+            $version = $tag.TrimStart('v')
+            $isPrerelease = "false"
+            $tagName = $tag
+            $releaseName = "QırımType $tag"
+          } else {
+            # Rolling preview for push to master without tag
+            $version = "$baseVersion-preview.$runNumber"
+            $isPrerelease = "true"
+            $tagName = "preview"
+            $releaseName = "QırımType Preview (Latest Build)"
+          }
+
+          # Semantic numeric version for AssemblyVersion / FileVersion (X.Y.Z.B)
+          if ($version -match '^(\d+)\.(\d+)(?:\.(\d+))?') {
+            $major = $matches[1]
+            $minor = $matches[2]
+            $patch = if ($matches[3]) { $matches[3] } else { "0" }
+            $assemblyVersion = "$major.$minor.0.0"
+            $fileVersion = "$major.$minor.$patch.$runNumber"
+          } else {
+            $assemblyVersion = "1.0.0.0"
+            $fileVersion = "1.0.0.$runNumber"
+          }
+
+          Write-Host "================ Build Info ================"
+          Write-Host "Version: $version"
+          Write-Host "AssemblyVersion: $assemblyVersion"
+          Write-Host "FileVersion: $fileVersion"
+          Write-Host "Git Tag: $tagName"
+          Write-Host "Release Name: $releaseName"
+          Write-Host "Pre-release: $isPrerelease"
+          Write-Host "============================================"
+
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ASSEMBLY_VERSION=$assemblyVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "FILE_VERSION=$fileVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "TAG_NAME=$tagName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "RELEASE_NAME=$releaseName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "IS_PRERELEASE=$isPrerelease" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          # Create release notes body
+          $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
+          if ($isPrerelease -eq "true") {
+            $bodyLines = @(
+              "### ⚠️ QırımType Preview Build",
+              "Automated build from the ``master`` branch.",
+              "",
+              "- **Commit:** ``$shaShort`` (``$sha``)",
+              "- **CI Build:** ``#$runNumber``",
+              "- **Build Date:** $buildDate UTC",
+              "",
+              "> 💡 *This build contains the latest development changes. For stable releases, please see the latest tagged release.*"
+            )
+            $bodyLines | Set-Content -Path "release-body.md" -Encoding utf8
+          } else {
+            $bodyLines = @(
+              "### QırımType $tagName",
+              "",
+              "Official release of QırımType for Windows (x64)."
+            )
+            $bodyLines | Set-Content -Path "release-body.md" -Encoding utf8
+          }
+
+      - name: Run Tests
+        run: dotnet test Tests/QirimType.Tests.csproj --configuration Release --verbosity normal
+
+      - name: Publish Standalone Windows x64
+        shell: pwsh
+        run: |
+          dotnet publish QirimType.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:Version="$env:VERSION" `
+            -p:AssemblyVersion="$env:ASSEMBLY_VERSION" `
+            -p:FileVersion="$env:FILE_VERSION" `
+            -p:InformationalVersion="$env:VERSION+${{ github.sha }}" `
+            -o ./publish
+
+      - name: Package Release Assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ./dist
+          Copy-Item ./publish/QirimType.exe ./dist/QirimType.exe
+
+          $zipName = if ($env:IS_PRERELEASE -eq "true") {
+            "QirimType-preview-win-x64.zip"
+          } else {
+            "QirimType-v$($env:VERSION)-win-x64.zip"
+          }
+          "ZIP_NAME=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          # Temporary folder for packaging clean archive
+          New-Item -ItemType Directory -Force -Path ./temp_archive
+          Copy-Item ./publish/QirimType.exe ./temp_archive/QirimType.exe
+          if (Test-Path README.md) { Copy-Item README.md ./temp_archive/README.md }
+          if (Test-Path LICENSE) { Copy-Item LICENSE ./temp_archive/LICENSE }
+
+          Compress-Archive -Path ./temp_archive/* -DestinationPath "./dist/$zipName" -Force
+
+          # Generate SHA256 Checksums for release artifacts
+          $filesToHash = @("./dist/QirimType.exe", "./dist/$zipName")
+          $hashes = $filesToHash | Get-FileHash -Algorithm SHA256 | ForEach-Object {
+            "$($_.Hash.ToLower())  $((Get-Item $_.Path).Name)"
+          }
+          $hashes | Out-File -FilePath ./dist/SHA256SUMS.txt -Encoding ascii
+
+          Write-Host "Files to publish:"
+          Get-ChildItem ./dist | Format-Table Name, Length
+
+      - name: Upload Artifacts to Workflow Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: qirimtype-${{ env.VERSION }}
+          path: ./dist/*
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ env.RELEASE_NAME }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
+          make_latest: ${{ env.IS_PRERELEASE != 'true' }}
+          generate_release_notes: ${{ env.IS_PRERELEASE != 'true' }}
+          body_path: release-body.md
+          files: |
+            ./dist/QirimType.exe
+            ./dist/${{ env.ZIP_NAME }}
+            ./dist/SHA256SUMS.txt

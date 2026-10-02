@@ -157,6 +157,24 @@ dotnet publish -c Release -r win-x64 --self-contained true
 
 ---
 
+## Непрерывная интеграция и релизы (CI/CD)
+
+В репозитории настроены GitHub Actions workflows:
+
+* **CI (`.github/workflows/ci.yml`)**: автоматически собирает решение и прогоняет тесты при каждом Pull Request.
+* **Релизы (`.github/workflows/release.yml`)**:
+  * **Стабильные релизы**: при создании тега `v*` (например, `v1.0.0`) автоматически создаётся официальный GitHub Release с пометкой `Latest`, прикрепляются `QirimType.exe`, `QirimType-v1.0.0-win-x64.zip` и файл контрольных сумм `SHA256SUMS.txt`.
+  * **Preview-сборки (Nightly)**: при каждом пуше в ветку `master` автоматически собирается и обновляется скользящий релиз `QırımType Preview (Latest Build)` с пометкой `Pre-release` и версией вида `1.0.0-preview.<номер_сборки>`.
+  * **Ручной запуск (`workflow_dispatch`)**: сборку любого релиза или пререлиза можно инициировать вручную через вкладку *Actions* в GitHub.
+
+### Как выпустить новую версию:
+```bash
+git tag v1.0.0
+git push origin v1.0.0   # или git push github v1.0.0
+```
+
+---
+
 ## Лицензия
 
 Проект распространяется под свободной лицензией [MIT](LICENSE).

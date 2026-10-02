@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 using QirimType.Utils;
 
@@ -64,9 +65,15 @@ public class AboutForm : Form
             Location = new Point(0, 0)
         };
 
+        var infoVersion = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        var displayVersion = !string.IsNullOrEmpty(infoVersion)
+            ? infoVersion.Split('+')[0]
+            : (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0");
+
         var versionLabel = new Label
         {
-            Text = "Версия 1.0.0 (Windows x64)",
+            Text = $"Версия {displayVersion} (Windows x64)",
             Font = new Font("Segoe UI", 9f, FontStyle.Regular),
             ForeColor = Color.FromArgb(108, 117, 125),
             AutoSize = true,
