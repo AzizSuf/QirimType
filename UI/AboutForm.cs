@@ -50,10 +50,14 @@ public class AboutForm : Form
             Margin = new Padding(0, 0, 14, 0)
         };
 
-        var titleBox = new Panel
+        var titleBox = new FlowLayoutPanel
         {
+            FlowDirection = FlowDirection.TopDown,
             AutoSize = true,
-            Margin = new Padding(0)
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = new Padding(0),
+            Padding = new Padding(0),
+            WrapContents = false
         };
 
         var titleLabel = new Label
@@ -62,7 +66,7 @@ public class AboutForm : Form
             Font = new Font("Segoe UI", 18f, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 102, 204),
             AutoSize = true,
-            Location = new Point(0, 0)
+            Margin = new Padding(0, 0, 0, 2)
         };
 
         var infoVersion = Assembly.GetExecutingAssembly()
@@ -77,7 +81,7 @@ public class AboutForm : Form
             Font = new Font("Segoe UI", 9f, FontStyle.Regular),
             ForeColor = Color.FromArgb(108, 117, 125),
             AutoSize = true,
-            Location = new Point(2, 28)
+            Margin = new Padding(2, 0, 0, 0)
         };
 
         titleBox.Controls.Add(titleLabel);
